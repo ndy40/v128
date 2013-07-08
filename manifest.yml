@@ -1,0 +1,17 @@
+--- 
+applications: 
+  .: 
+    name: uos-rch
+    services: 
+      rchdb: 
+        type: mysql
+    instances: 1
+    framework: 
+      name: php
+      info: 
+        exec: 
+        description: PHP Application
+        mem: 128M
+    mem: 128M
+    url: rch.eu01.aws.af.cm
+    infra: eu-aws
