@@ -9,7 +9,7 @@
 	//echo $_SERVER['DOCUMENT_ROOT'];
     $baseUrl =  "http://".$_SERVER['HTTP_HOST']."/v12.8/" ; 
     $documentRoot = $_SERVER['DOCUMENT_ROOT'] ; 
-	$assetsUrl = "http://".$_SERVER['HTTP_HOST']. "/v12.8/assets/";
+	$assetsUrl = "http://".$_SERVER['HTTP_HOST']. "/sites/v12.8/assets/";
 	//Get environment variable from AppFog for db parameters
 	//$services_json = json_decode(getenv("VCAP_SERVICES"),true);
 	//$mysql_config = $services_json["mysql-5.1"][0]["credentials"];
