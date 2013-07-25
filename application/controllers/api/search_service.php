@@ -1,4 +1,7 @@
-<?php  defined('BASEPATH') OR exit('No direct script access allowed');
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type,x-xsrf-token,X-Requested-With,*");
+defined('BASEPATH') OR exit('No direct script access allowed');
 
 
 /*
@@ -90,6 +93,22 @@ class Search_service extends REST_Controller {
         $size = $this->get("size");
         $objects = $this->search->get_objects_by_museum($museum,$offset,$size);
         $this->response(array("status"=>"success","data"=>$objects));
+   }
+
+   public function get_random_objects_get(){
+    $this->load->model("search_model","search",true);
+    $size = $this->get("size");
+    $response = $this->search->get_random_objects($size);
+    $this->response(array("status"=>"success","data"=>$response,"count"=> $size));
+
+   }
+
+   public function get_random_videos_get(){
+    $this->load->model("search_model","search",true);
+    $size = $this->get("size");
+    $type = ucwords($this->get("mediatype"));
+    $response = $this->search->get_random_media($size,$type);
+    $this->response(array("status"=>"success","data"=>$response,"count"=> $size));
    }
 
 }

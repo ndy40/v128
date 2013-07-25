@@ -286,7 +286,7 @@ class Search_model extends CI_Model {
                                     "media" => $image_url .$media_filename .".jpg",
                                 );
                         }else if(strtolower($media->MediaType) == 'audio'){
-                            $audio_filename = strtolower($row->MediaFileName);
+                            $audio_filename = strtolower($media_filename);
                             $audio = $assetsUrl . 'objects/' . $museum_filename . '/audio/';
                             $mediadata["Media"] = array(
                                     "media" => $audio.$audio_filename
@@ -512,6 +512,63 @@ class Search_model extends CI_Model {
 
     }
     
+    //fetch the number of random cultural objects specified in the $num_of_objects parameter
+    public function get_random_objects($num_of_objects){
+        $this->load->database();
+        //select minimum COId from db
+        $this->db->select_min("COId");
+        $query = $this->db->get("CulturalObjects");
+        //select maximum COId from db
+        $min_id = $query->row()->COId;
+        $this->db->select_max("COId");
+        $query = $this->db->get("CulturalObjects");
+        $max_id = $query->row()->COId;
+
+        $selected_ids = array();
+        for($i =0; $i < $num_of_objects;$i++){
+            $selected_ids[] = rand($min_id,$max_id);
+        }
+
+        $this->db->from("CulturalObjects");
+        $this->db->where_in("COId",$selected_ids);
+        $query = $this->db->get();
+        $selected_objects = array();
+        foreach($query->result() as $row){
+            $selected_objects[] = $this->fetch_object($row->COId);
+        }
+
+        return $selected_objects;
+    }
+
+    //fetch the number of random cultural objects specified in the $num_of_objects parameter
+    public function get_random_media($num_of_objects,$type){
+        $this->load->database();
+        //select minimum COId from db
+        $this->db->select_min("AMOId");
+        $this->db->where("AssociatedMediaType",$type);
+        $query = $this->db->get("AssociatedMediaObjects");
+        $min_id = $query->row()->AMOId;
+        //select maximum COId from db
+        $this->db->select_max("AMOId");
+        $this->db->where("AssociatedMediaType",$type);
+        $query = $this->db->get("AssociatedMediaObjects");
+        $max_id = $query->row()->AMOId;
+
+        $selected_ids = array();
+        for($i =0; $i < $num_of_objects;$i++){
+            $selected_ids[] = rand($min_id,$max_id);
+        }
+
+        $this->db->from("AssociatedMediaObjects");
+        $this->db->where_in("AMOId",$selected_ids);
+        $query = $this->db->get();
+        $selected_objects = array();
+        foreach($query->result() as $row){
+            $selected_objects[] = $this->fetch_media_object($row->AMOId);
+        }
+
+        return $selected_objects;
+    }
     
     
 

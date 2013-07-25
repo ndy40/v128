@@ -39,14 +39,14 @@
 */
 
 //Get environment variable from AppFog for db parameters
-//$services_json = json_decode(getenv("VCAP_SERVICES"),true);
-//	$mysql_config = $services_json["mysql-5.1"][0]["credentials"];
+$services_json = json_decode(getenv("VCAP_SERVICES"),true);
+$mysql_config = $services_json["mysql-5.1"][0]["credentials"];
 
 $active_group = 'default';
 $active_record = TRUE;
 $db['default']['hostname'] = "localhost";
-$db['default']['username'] = "root";//root';
-$db['default']['password'] = "mysql";//1234';
+$db['default']['username'] = "root";
+$db['default']['password'] = "mysql";
 $db['default']['database'] = "rchdb";//rch_db';
 $db['default']['dbdriver'] = 'mysql';
 /*

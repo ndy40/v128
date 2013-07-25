@@ -7,16 +7,16 @@
     //$db_type = XML;
 	$db_type = "_db";
 	//echo $_SERVER['DOCUMENT_ROOT'];
-    $baseUrl =  "http://".$_SERVER['HTTP_HOST']."/v12.8/" ; 
+    $baseUrl =  "http://".$_SERVER['HTTP_HOST']."/sites/v12.8/"; 
     $documentRoot = $_SERVER['DOCUMENT_ROOT'] ; 
 	$assetsUrl = "http://".$_SERVER['HTTP_HOST']. "/sites/v12.8/assets/";
 	//Get environment variable from AppFog for db parameters
-	//$services_json = json_decode(getenv("VCAP_SERVICES"),true);
-	//$mysql_config = $services_json["mysql-5.1"][0]["credentials"];
-	$databaseName = "rchdb";
-	$databaseUrl = "localhost";
-	$databaseLoginId = "root";
-	$databaseLoginPassword = "mysql";
+	$services_json = json_decode(getenv("VCAP_SERVICES"),true);
+	$mysql_config = $services_json["mysql-5.1"][0]["credentials"];
+	$databaseName = $mysql_config["name"];
+	$databaseUrl = $mysql_config["host"];
+	$databaseLoginId = $mysql_config["username"];
+	$databaseLoginPassword = $mysql_config["password"];
 	$group_url = "https://www.facebook.com/groups/saloneheritage/";
 	
 	// ARCODB = 
