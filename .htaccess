@@ -8,9 +8,9 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php/$1 [L]
 RewriteCond %{HTTP_HOST} ^mydomain.com [NC]
-RewriteRule ^(.*)$ http://www.sierraleoneheritage.com/$1 [L,R=301]
+RewriteRule ^(.*)$ http://www.rch.eu01.awf.af.cm/$1 [L,R=301]
 
-<IfModule mod_headers.c>
-	Header set Access-Control-Allow-Origin: "*"
-	Header set Access-Control-Allow-Headers: "Content-Type,x-xsrf-token,X-Requested-With,*"
-</IfModule>
+<ifModule mod_headers.c>
+Header set Access-Control-Allow-Origin: *
+Header set Access-Control-Allow-Headers: xsrf-token,content-type,x-requested-with,x-api-key
+</ifModule>

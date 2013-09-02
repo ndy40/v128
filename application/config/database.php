@@ -44,10 +44,10 @@ $mysql_config = $services_json["mysql-5.1"][0]["credentials"];
 
 $active_group = 'default';
 $active_record = TRUE;
-$db['default']['hostname'] = "localhost";
-$db['default']['username'] = "root";
-$db['default']['password'] = "mysql";
-$db['default']['database'] = "rchdb";//rch_db';
+$db['default']['hostname'] = "localhost";//$mysql_config["hostname"];
+$db['default']['username'] = "root";//$mysql_config["username"];
+$db['default']['password'] =  "mysql";//$mysql_config["password"];
+$db['default']['database'] = "rchdb"; //$mysql_config["name"];
 $db['default']['dbdriver'] = 'mysql';
 /*
 $db['default']['hostname'] = '';//'localhost:3307';//localhost';

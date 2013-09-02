@@ -1,6 +1,7 @@
 <?php
+header("Access-Control-Allow-Headers: x-requested-with, content-type,xsrf-token");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type,x-xsrf-token,X-Requested-With,*");
+//header("Access-Control-Max-Age: 86400");
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 
@@ -20,15 +21,13 @@ class Search_service extends REST_Controller {
     
            
     public function search_item_post(){
-        $this->load->model("search_model","search",true);
-        $result = array();
+        $this->load->model("search_model","search",true);        
         //Get parameters for offset and result size
         $offset = $this->get("offset");
         $size = $this->get("size");        
         //get search parameters
         $json_data =  json_decode(file_get_contents("php://input"));
-
-        if(!property_exists($json_data, "keywords") || is_null($json_data->keywords) || empty($json_data->keywords)){
+        if(is_null($json_data->keywords) || empty($json_data->keywords)){
             $result = $this->search->showAll($offset,$size);
         }else{
             $result = $this->search->find($json_data->keywords,$json_data->data,$offset,$size);           
@@ -109,7 +108,7 @@ class Search_service extends REST_Controller {
     $type = ucwords($this->get("mediatype"));
     $response = $this->search->get_random_media($size,$type);
     $this->response(array("status"=>"success","data"=>$response,"count"=> $size));
-   }
+   }   
 
 }
 

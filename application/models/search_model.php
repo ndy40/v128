@@ -11,6 +11,7 @@
  * @author ndy40
  */
 
+require APPPATH.'/config/rest.php';
 
 class Search_model extends CI_Model {
 
@@ -25,39 +26,59 @@ class Search_model extends CI_Model {
         //load database
         $this->load->database();
         $keywords = explode(" ", $keywrds);
+        $search_fields = array("AccessionNumber","Object","Description");
+        $search_groups = array("ObjectType","Materials","Museum","CultureGroup");
+        $found_items = array();
         //trim to remove whitespaces
         for ($i = 0; $i < sizeof($keywords); $i++)
             $keywords[$i] = trim($keywords[$i]);
         //remove unchecked options
+        /*
         for ($index = 0; $index < count($select_cat_json); $index) {
             //scan all item list for unchecked items and remove accordingly
-            for($j = 0; $j < count($select_cat_json[$index]->items);$j++){
-                if(!$select_cat_json[$index]->items[j]->checked){
-                        array_splice($select_cat_json[$index]->items, i,1);
-                }
-                if(count($select_cat_json[$index]->items) < 1){
-                    array_splice($select_cat_json, $index,1);
-                }
-            }
+               if(!empty($select_cat_json[$index]->items)){
+                        for($i = 0; $i < count($select_cat_json[$index]->items); $i){
+                            if(!$select_cat_json[$index]->items[$i]->checked){
+                                array_splice($select_cat_json[$index]->items,$i,1);
+                            }
+                        }
+                        array_splice($select_cat_json, $index,1);
+                }        
+        
         }
-
+        */
+        
         //get collection in batches and return results
         $object_collection = $this->db->get("CulturalObjects")->result_array();
+        $item_count = count($object_collection);
         //search per field
-        $object_collection = $this->advance_search($object_collection, $keywords, "AccessionNumber");
-        $object_collection = $this->advance_search($object_collection, $keywords, "Object");
-        $object_collection = $this->advance_search($object_collection, $keywords, "Description");
-        
-        if ($select_categories) {
-            $object_collection = $this->advance_check($object_collection,$select_cat_json,"ObjectType");
-            $object_collection = $this->advance_check($object_collection,$select_cat_json,"Materials");
-            $object_collection = $this->advance_check($object_collection,$select_cat_json,"Museum");
-            $object_collection = $this->advance_check($object_collection,$select_cat_json,"CultureGroup");
+        foreach($search_fields as $value){
+            $results = $this->advance_search($object_collection, $keywords, $value);    
+            if(count($results) > 0){
+                foreach($results as $value)
+                    array_push($found_items,$value);
+            }
         }
-        $count_results = count($object_collection);
-        $object_collection = array_splice($object_collection, $offset,$size);
-        //return $object_collection;
-        return array("results" => array("count" => count($count_results), "offset" => (int) $offset, "size" => (int) $size, "resultcount" => count($object_collection), "data" => $object_collection));
+       
+        //compare values against the filter attributes  
+        if (count($select_cat_json) > 0) { 
+            $copy_found_items = $found_items;             
+            foreach ($search_groups as $key) {                           
+                $results = $this->advance_check($copy_found_items,$select_cat_json,$key);
+                if(count($results) > 0){                    
+                    foreach($results as $value){
+                        array_push($found_items,$value);                        
+                    }
+                }            
+            }
+        } 
+        $this->remove_duplicate_cobj($found_items);        
+        $found_items = array_filter($found_items);
+        //$found_items = array_unique($found_items,SORT_STRING);
+        $count_results = count($found_items);
+        $found_items = array_splice($found_items, $offset,$size);
+        
+        return array("results" => array("count" => $count_results, "offset" => (int) $offset, "size" => (int) $size, "resultcount" => count($found_items), "data" => $found_items));
     }
 
     protected function advance_search(&$dbCollection, $keywords, $searchField) {
@@ -72,6 +93,7 @@ class Search_model extends CI_Model {
             }
             //regex pattern
             $pattern = '/\b' . $keywords[$kwrd_count] . '\b/i';
+
             $found_index = 0;
             //iterate over collection and compare against keyword pattern
             for ($index = 0; $index < count($dbCollection); $index++) {
@@ -79,83 +101,26 @@ class Search_model extends CI_Model {
                 if ($matches) {
                     //copy record to copy collection. This means keywords match
                     $copy_of_collections[$found_index] = $dbCollection[$index];
+                    $copy_of_collections[$found_index]["MediaObjects"] = $this->fetch_media_objects($copy_of_collections[$found_index]['COId']);
                     $found_index++;
                 }
-            }
-            //check for duplicate items
-            for ($i = 0; $i < count($copy_of_collections); $i++) {
-                $repeated_item = 0; //keep tracks of similar or duplicate items
-                for ($j = 0; $j < count($dbCollection); $j++) {
-                    if ($copy_of_collections[$i]['AccessionNumber'] == $dbCollection[$j]['AccessionNumber']) {
-                        $repeated_item = 1;
-                        break;
-                    }
-                }
-
-                //no item repeated
-                if ($repeated_item == 0) {
-                    //update collection
-                    $dbCollection[$num_of_objects]["AccessionNumber"] = $copy_of_collections[$i]['AccessionNumber'];
-                    $dbCollection[$num_of_objects]["ObjectType"] = $copy_of_collections[$i]['ObjectType'];
-                    $dbCollection[$num_of_objects]["Object"] = $copy_of_collections[$i]['Object'];
-                    $dbCollection[$num_of_objects]["Description"] = $copy_of_collections[$i]['Description'];
-                    $dbCollection[$num_of_objects]["Materials"] = $copy_of_collections[$i]['Materials'];
-                    $dbCollection[$num_of_objects]["CultureGroup"] = $copy_of_collections[$i]['CultureGroup'];
-                    $dbCollection[$num_of_objects]["Museum"] = $copy_of_collections[$i]['Museum'];
-
-                    $museum_filename = strtolower(str_replace(' ', '_', $ob[$i]['Museum'])); //creat file path
-                    $media_objects = $this->db->get_where("MediaObjects", array("FK_COId" => $copy_of_collections[$i]['COId']));
-                    //build media section 
-                    foreach ($media_objects->result() as $row) {
-                        $dbCollection[$num_of_objects]["MediaObject"] = $row->MediaFileName;
-                        $media_filename = strtolower($row->MediaFileName);
-                        if ($media_filename == "no data") {
-                            $dbCollection[$num_of_objects]['MediaObjects'][0]['ThumbSmall'] = $assetsUrl . 'objects/all/image/small/no-image.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][0]['ThumbMedium'] = $assetsUrl . 'objects/all/image/medium/no-image.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][0]['ThumbLarge'] = $assetsUrl . 'objects/all/image/large/no-image.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][0]['Media'] = $assetsUrl . 'objects/all/image/large/no-image.jpg';
-                        } else {
-                            $image = $assetsUrl . 'objects/' . $museum_filename . '/image/';
-                            $dbCollection[$num_of_objects]['MediaObjects'][0]['ThumbSmall'] = $image . 'thumbs/small/' . $media_filename . '.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][$j]['ThumbMedium'] = $image . 'thumbs/medium/' . $media_filename . '.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][$j]['ThumbLarge'] = $image . $media_filename . '.jpg';
-                            $dbCollection[$num_of_objects]['MediaObjects'][$j]['Media'] = $image . $media_filename . '.jpg';
-                            if (strtolower($mediaobjects[$j]['MediaType']) == 'audio') {
-                                $audio_filename = strtolower($mediaobjects[$j]['MediaFileName']);
-                                if (isset($mediaobjects[$j]['MediaFileName'])) {
-                                    $media_filename = strtolower($mediaobjects[$j + 1]['MediaFileName']);
-                                    $image = $assetsUrl . 'objects/' . $museum_filename . '/image/';
-                                    $item[$num]['MediaObjects'][$j]['ThumbSmall'] = $image . 'thumbs/small/' . $media_filename . '.jpg';
-                                    $item[$num]['MediaObjects'][$j]['ThumbMedium'] = $image . 'thumbs/medium/' . $media_filename . '.jpg';
-                                    $item[$num]['MediaObjects'][$j]['ThumbLarge'] = $image . $media_filename . '.jpg';
-                                    $item[$num]['MediaObjects'][$j]['Media'] = $image . $media_filename . '.jpg';
-                                    $audio = $assetsUrl . 'objects/' . $museum_filename . '/audio/';
-                                    $item[$num]['MediaObjects'][$j]['Media'] = $audio . $audio_filename;
-                                }
-                            }
-                            ++$num_of_objects;
-                        }
-                    }
-                }
-            }
-        }
-        return $dbCollection;
+            }            
+        }        
+        return $copy_of_collections;
     }
 
     //check against all other fields
     protected function advance_check($item, $search_categories, $search_type) {
         $num = 0;
         $search_results = array();
-        $search_property = array();
         //get the collection with the searched property
-        foreach($search_categories as $srch_group){
-            die(var_dump($srch_group));
+        foreach($search_categories as $srch_group){                    
             if($srch_group->key == $search_type){
                 $search_property = $srch_group;
                 break;
             }
-        }
-
+        }        
+        if(isset($search_property)){
         for ($i = 0; $i < count($item); $i++) {
             //British Library and Cootje Van Oven do not contain Material types
             if (($search_property->key == 'Materials') && (($item[$i]['Museum'] == 'British Library') || ($item[$i]['Museum'] == 'Cootje van Oven Collection'))) {
@@ -163,11 +128,10 @@ class Search_model extends CI_Model {
                 $num++;
             } else {
                 //check for ObjectType
-
                 if (isset($item[$i]))
                     for ($j = 0; $j < count($search_property->items); $j++) {
                         //echo "<br>".$item[$i][$search_type]. " : ".$search_categories[$search_type][$j];
-                        if (strstr(strtolower($item[$i][$search_type]), strtolower($search_property->items[j]->value))) {
+                        if (strstr(strtolower($item[$i][$search_type]), strtolower($search_property->items[$j]->value))) {
                             //echo $item[$i][$search_type];
                             $search_results[$num] = $item[$i];
                             $num++;
@@ -176,6 +140,7 @@ class Search_model extends CI_Model {
                     }
             }
         }
+        }        
         return $search_results;
     }
 
@@ -189,34 +154,7 @@ class Search_model extends CI_Model {
         $total_count = $this->db->count_all_results("CulturalObjects");
         if ($query->num_rows() > 0) {
             foreach ($query->result() as $rows) {
-                $museum_file_path = strtolower(str_replace(' ', '_', $rows->Museum));
-                $image = $assetsUrl . 'objects/' . $museum_file_path . '/image/';
-                //build collection of media objects
-                $media_query = $this->db->get_where("MediaObjects", array("FK_COId" => $rows->COId), $size, $offset);
-                $media_objects = array();
-                if($media_query->num_rows() > 0) {
-                    $mo = $media_query->row();
-                    $mediaFile = strtolower($mo->MediaFileName);
-                    //check for empty data in mediaobject file name
-                    if ($mediaFile == "no data") {
-                        //append empty image url
-                        $media_objects["Media"][] = array(
-                            "small" => $assetsUrl . 'objects/all/image/small/no-image.jpg',
-                            "medium" => $assetsUrl . 'objects/all/image/medium/no-image.jpg',
-                            "large" => $assetsUrl . 'objects/all/image/large/no-image.jpg',
-                            "media" => $assetsUrl . 'objects/all/image/large/no-image.jpg'
-                        );
-                    } else {
-                        $media_objects["Media"][] = array(
-                            "small" => $image . 'thumbs/small/' . $mo->MediaFileName . ".jpg",
-                            "medium" => $image . 'thumbs/medium/' . $mo->MediaFileName . ".jpg",
-                            "large" => $image . $mo->MediaFileName . ".jpg",
-                            "media" => $image . $mo->MediaFileName . ".jpg"
-                        );
-                    }
-                }
-
-                $results_array[] = array(
+                   $results_array[] = array(
                     "COId" => $rows->COId,
                     "AccessionNumber" => $rows->AccessionNumber,
                     "ObjectType" => $rows->ObjectType,
@@ -225,7 +163,7 @@ class Search_model extends CI_Model {
                     "Materials" => $rows->Materials,
                     "CultureGroup" => $rows->CultureGroup,
                     "Museum" => $rows->Museum,
-                    "MediaObjects" => $media_objects
+                    "MediaObjects" => $this->fetch_media_objects($rows->COId)
                 );
             }
         }
@@ -337,8 +275,12 @@ class Search_model extends CI_Model {
                                 );
                         }else if(strtolower($media->MediaType) == 'audio'){
                             $audio_filename = strtolower($media->MediaFileName);
-                            $audio = $assetsUrl . 'objects/' . $museum_filename . '/audio/';
+                            $audio = $assetsUrl . 'objects/' . $museum_filename . '/audio/';   
+                            $image_url = $assetsUrl.'objects/' . $museum_filename . '/image/';                                               
                             $mediadata["Media"] = array(
+                                    "small" => $image_url . 'thumbs/small/'.$media_filename .".jpg",
+                                    "medium" => $image_url . 'thumbs/medium/'.$media_filename .".jpg",
+                                    "large" => $image_url .$media_filename .".jpg",
                                     "media" => $audio.$audio_filename
                                 );
                         }else if(strtolower($media->MediaType) == 'no data'){
@@ -353,7 +295,7 @@ class Search_model extends CI_Model {
                 }
 
                 //add object to response
-                $response["Media"][]=$mediadata;
+                $response[]=$mediadata;
             }
             return $response;
     }
@@ -570,6 +512,48 @@ class Search_model extends CI_Model {
         return $selected_objects;
     }
     
+
+    private function remove_duplicate_cobj(&$cultural_objects){
+        $keyIndex= array();
+        for($i = 0; $i < count($cultural_objects); $i++){
+            //if this is first search then just insert record
+            if(!isset($keyIndex[$cultural_objects[$i]["COId"]]))
+                $keyIndex[$cultural_objects[$i]["COId"]] = $cultural_objects[$i]["AccessionNumber"];
+            else{                
+                array_splice($cultural_objects,$i,1);
+            }
+        }        
+    }
+
+    public function generate_api_key(){
+        $this->load->helper("security");
+        $this->config->load("rest");
+        do{
+            $salt = do_hash(time().mt_rand());
+            $new_key = substr($salt,0,$this->config->item("rest_key_length"));
+
+        }while(self::_key_exist($new_key));
+        $data = array(
+            "level" => 1
+            );
+        self::_insert_key($new_key,$data);
+        return $new_key;        
+    }
+
+    private function _insert_key($key,$data){
+        $this->config->load("rest");
+        $data["key"] = $key;
+        $data["date_created"] = function_exists('now')? now():time();
+        return $this->db->set($data)->insert($this->config->item("rest_keys_table"));
+    }
+
+    private function _key_exist($key){
+        $this->config->load("rest");
+        return $this->db->where("key",$key)->count_all_results($this->config->item("rest_keys_table")) > 0;
+    }
+
+    
+
     
 
 }
