@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 
 
 
+=======
+#ignore local database file
+database.php
+database-local.php
+baseurl.php
+baseurl.php.save
+>>>>>>> 50e2603773924b591a7b3a9a2e2df3388d8c2164
 
